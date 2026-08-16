@@ -66,20 +66,6 @@ Convención de Denavit-Hartenberg estándar. La matriz de cada eslabón se compo
 `Rot(z,θ) · Trasl(z,d) · Trasl(x,a) · Rot(x,α)`, y la orientación del extremo se expresa en
 **ángulos de Euler XYZ**.
 
-## Verificación
-
-El núcleo de cálculo se ha contrastado con la resolución manual mediante matrices de
-transformación homogénea y con el modelo docente previo, sobre cuatro configuraciones del
-ABB IRB 4600, con coincidencia en las cuatro cifras decimales mostradas.
-
-## Origen
-
-Desarrollado como Trabajo Fin de Máster del Máster Interuniversitario en Representación y
-Diseño en Ingeniería y Arquitectura de la **Universidad de Almería**.
-
-Toma como antecedente el simulador **RobotFKS** de la asignatura Diseño de Robótica
-Industrial, escrito en VPython sobre GlowScript.
-
 ## Licencia
 
 [MIT](LICENSE) — Copyright © 2026 Elena Garrido Sánchez.
