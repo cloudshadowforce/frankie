@@ -6,18 +6,7 @@ Simulador del algoritmo de **Denavit-Hartenberg** para la enseñanza de la cinem
 directa de robots manipuladores. Se ejecuta íntegramente en el navegador, sin
 instalación, sin licencias y sin servicios externos.
 
-<h1>[Abrir el simulador](https://cloudshadowforce.github.io/frankie/)</h1>
-
-<!--<p align="center">
-  <a href="https://cloudshadowforce.github.io/frankie/">
-    <img src="assets/abrir-simulador.svg" alt="Abrir el simulador" width="260">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://cloudshadowforce.github.io/frankie/"><b>https://cloudshadowforce.github.io/frankie/</b></a><br>
-  <sub>Se ejecuta en el navegador. Sin instalación, sin registro y sin coste.</sub>
-</p>-->
+[Abrir el simulador](https://cloudshadowforce.github.io/frankie/)
 
 ---
 
