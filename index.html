@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<!--
+  ===========================================================================
+  FRANKIE - Forward-kinematics Robot Arm Navigation Kit for Interactive
+            Education
+  Simulador del algoritmo de Denavit-Hartenberg para uso academico
+
+  Copyright (c) 2026 Elena Garrido Sanchez
+  Universidad de Almeria
+  Master Interuniversitario en Representacion y Diseno en Ingenieria y
+  Arquitectura
+  ---------------------------------------------------------------------------
+  Licencia MIT
+
+  Por la presente se concede permiso, libre de cargo, a cualquier persona que
+  obtenga una copia de este software y de los ficheros de documentacion
+  asociados (el "Software"), a utilizar el Software sin restriccion,
+  incluyendo sin limitacion los derechos de uso, copia, modificacion, fusion,
+  publicacion, distribucion, sublicencia y/o venta de copias del Software, y a
+  permitir a las personas a las que se les proporcione el Software a hacer lo
+  mismo, sujeto a las siguientes condiciones:
+
+  El aviso de copyright anterior y este aviso de permiso se incluiran en todas
+  las copias o partes sustanciales del Software.
+
+  EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTIA DE NINGUN TIPO, EXPRESA
+  O IMPLICITA, INCLUYENDO PERO NO LIMITADO A GARANTIAS DE COMERCIALIZACION,
+  IDONEIDAD PARA UN PROPOSITO PARTICULAR E INCUMPLIMIENTO. EN NINGUN CASO LOS
+  AUTORES O TITULARES DEL COPYRIGHT SERAN RESPONSABLES DE NINGUNA RECLAMACION,
+  DANOS U OTRAS RESPONSABILIDADES, YA SEA EN UNA ACCION DE CONTRATO, AGRAVIO O
+  CUALQUIER OTRO MOTIVO, DERIVADAS DE, FUERA DE O EN CONEXION CON EL SOFTWARE
+  O SU USO U OTRO TIPO DE ACCIONES EN EL SOFTWARE.
+  ---------------------------------------------------------------------------
+  Dependencia externa: Three.js (https://threejs.org), tambien bajo licencia
+  MIT, cargada desde una red publica de distribucion de contenidos.
+  ===========================================================================
+-->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulador Denavit-Hartenberg</title>
+<!-- Three.js r128 (licencia MIT). Se usa la copia local incluida en el repositorio;
+     si no estuviera disponible, se recurre a la red de distribucion como respaldo. -->
+<script src="three.min.js"></script>
+<script>
+  if (typeof THREE === "undefined") {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+  }
+</script>
+<style>
+  :root{
+    --bg:#0a0c10; --band:#0e1116; --viewport:#0d1014; --viewport-top:#141922; --panel:#111419;
+    --surface:#161a21; --surface-2:#0f1319; --border:#232935;
+    --text:#eef1f5; --muted:#8b93a0; --accent:#8b7bff; --accent-ink:#0b0a1a;
+    --overlay:rgba(10,12,16,.72); --overlay-soft:rgba(10,12,16,.6);
+    --x:#ff6b6b; --y:#67d982; --z:#5aa2ff; --rev:#ffd23f; --pris:#e879f9;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6fa; --band:#eef1f6; --viewport:#e7ecf3; --viewport-top:#fbfcfe; --panel:#ffffff;
+    --surface:#ffffff; --surface-2:#f2f5f9; --border:#dbe1ea;
+    --text:#1a1f28; --muted:#5f6b7a; --accent:#6b5bff; --accent-ink:#ffffff;
+    --overlay:rgba(255,255,255,.82); --overlay-soft:rgba(255,255,255,.7);
+    --x:#e14b4b; --y:#2f9e52; --z:#2f6fe0; --rev:#d99a00; --pris:#c04bd6;
+  }
+  html{transition:background .2s;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);
+    -webkit-font-smoothing:antialiased;}
+  #root{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100vw;}
+
+  /* ---- Barra de marca ---- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 20px;background:var(--bg);border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex;align-items:center;gap:11px;}
+  .brand .mark{width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg,var(--accent),#5a6bff);
+    display:grid;place-items:center;font-weight:800;font-size:13px;color:var(--accent-ink);}
+  .brand h1{margin:0;font-size:14.5px;font-weight:650;letter-spacing:.01em;}
+  .brand span{color:var(--muted);font-weight:400;}
+  header .tag{font-size:11px;color:var(--muted);border:1px solid var(--border);
+    padding:4px 10px;border-radius:20px;}
+  .head-right{display:flex;align-items:center;gap:10px;}
+  .theme-btn{display:grid;place-items:center;width:32px;height:32px;padding:0;border-radius:9px;
+    border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:.15s;}
+  .theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .theme-btn svg{width:16px;height:16px;}
+  .theme-btn .to-dark{display:none;}
+  :root[data-theme="light"] .theme-btn .to-light{display:none;}
+  :root[data-theme="light"] .theme-btn .to-dark{display:block;}
+
+  /* ---- Banda de indicadores ---- */
+  .stats{display:flex;gap:10px;padding:12px 16px;background:var(--band);
+    border-bottom:1px solid var(--border);overflow-x:auto;}
+  .statcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:11px 16px;min-width:max-content;}
+  .statcard .h{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+    margin-bottom:7px;}
+  .triple{display:flex;gap:16px;}
+  .num{display:flex;flex-direction:column;gap:2px;}
+  .num b{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
+  .num small{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .num.ax-x b{color:#ff8f8f;} .num.ax-y b{color:#8ce6a3;} .num.ax-z b{color:#8bc0ff;}
+  .metarow{display:flex;gap:18px;align-items:center;}
+  .metarow .num b{font-size:21px;}
+  .unit-toggle{margin-left:8px;font-size:10.5px;color:var(--muted);cursor:pointer;
+    border:1px solid var(--border);background:var(--surface-2);border-radius:7px;padding:4px 9px;}
+  .unit-toggle:hover{border-color:var(--accent);color:var(--text);}
+
+  /* ---- Cuerpo: viewport + panel ---- */
+  #body{flex:1;display:grid;grid-template-columns:1fr 372px;min-height:0;}
+  #viewport{position:relative;background:
+    radial-gradient(120% 120% at 50% 0%,var(--viewport-top) 0%,var(--viewport) 60%);overflow:hidden;}
+  #viewport canvas{display:block;}
+  #legend{position:absolute;bottom:12px;left:14px;display:flex;gap:13px;flex-wrap:wrap;
+    background:var(--overlay);border:1px solid var(--border);border-radius:9px;
+    padding:7px 12px;font-size:11px;color:var(--muted);pointer-events:none;backdrop-filter:blur(6px);}
+  #legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
+  #hint{position:absolute;bottom:12px;right:14px;font-size:10px;color:var(--muted);max-width:46%;
+    background:var(--overlay-soft);padding:5px 9px;border-radius:6px;pointer-events:none;backdrop-filter:blur(6px);}
+  .vp-btns{position:absolute;top:12px;right:12px;display:flex;gap:7px;}
+  .vp-btns button{font-size:11px;}
+
+  /* ---- Panel ---- */
+  #panel{background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;}
+  section{border-bottom:1px solid var(--border);padding:16px 18px;}
+  section h2{margin:0 0 11px;font-size:10px;letter-spacing:.17em;text-transform:uppercase;
+    color:var(--muted);font-weight:650;}
+  select,textarea{width:100%;background:var(--surface-2);color:var(--text);
+    border:1px solid var(--border);border-radius:9px;padding:9px 10px;font-size:12.5px;}
+  select{margin-bottom:10px;cursor:pointer;}
+  textarea{height:108px;resize:vertical;font-family:var(--mono);font-size:12px;line-height:1.55;}
+  textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .cols{font-size:10px;color:var(--muted);margin:7px 0 10px;font-family:var(--mono);}
+  .row{display:flex;gap:8px;}
+  button{font-family:var(--ui);font-size:12.5px;font-weight:550;cursor:pointer;border-radius:9px;
+    padding:9px 13px;border:1px solid var(--border);background:var(--surface);color:var(--text);
+    transition:.15s;}
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:650;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.wide{flex:1;}
+  #status{font-size:11px;margin-top:10px;min-height:15px;color:var(--muted);font-family:var(--mono);}
+  #status.err{color:#ff8a8a;} #status.ok{color:#8ce6a3;}
+
+  .joint{margin-bottom:16px;} .joint:last-child{margin-bottom:2px;}
+  .joint .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .joint .name{font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px;}
+  .joint .chip{width:8px;height:8px;border-radius:50%;}
+  .joint .name em{font-style:normal;font-size:9.5px;color:var(--muted);letter-spacing:.09em;
+    text-transform:uppercase;}
+  .joint .cur{font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:var(--border);}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;border:2px solid var(--panel);}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);
+    cursor:pointer;border:2px solid var(--panel);}
+  .joint .range{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;
+    color:var(--muted);margin-top:3px;}
+  .opts{display:flex;flex-direction:column;gap:10px;}
+  .opts label{display:flex;align-items:center;gap:9px;font-size:12.5px;cursor:pointer;}
+  .opts input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
+
+  /* ---- Tablet ---- */
+  @media (max-width:880px){
+    #body{grid-template-columns:1fr;grid-template-rows:46vh 1fr;}
+    #panel{border-left:none;border-top:1px solid var(--border);}
+    .stats{flex-wrap:nowrap;}
+    #hint{max-width:52%;}
+  }
+  /* ---- Móvil ---- */
+  @media (max-width:600px){
+    header{padding:9px 13px;}
+    .brand h1{font-size:12.5px;}
+    header .tag{display:none;}
+    .stats{padding:9px 11px;gap:8px;}
+    .statcard{padding:9px 12px;}
+    .num b{font-size:18px;} .metarow .num b{font-size:18px;}
+    #body{grid-template-rows:44vh 1fr;}
+    section{padding:13px 14px;}
+    #hint{display:none;}
+    #legend{gap:9px;padding:6px 10px;font-size:10px;}
+    .vp-btns button{padding:7px 10px;}
+  }
+  @media (max-width:380px){
+    .brand h1{font-size:11.5px;} .brand .mark{width:23px;height:23px;font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div id="root">
+
+  <header>
+    <div class="brand">
+      <div class="mark">DH</div>
+      <h1>Simulador Denavit–Hartenberg</h1>
+    </div>
+    <div class="head-right">
+      <div class="tag">Software libre · JavaScript + Three.js</div>
+      <button id="themeBtn" class="theme-btn" title="Cambiar tema claro / oscuro" aria-label="Cambiar tema claro u oscuro">
+        <svg class="to-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4l1.4-1.4M18 6l1.4-1.4"/></svg>
+        <svg class="to-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="statcard">
+      <div class="h">Posición del extremo</div>
+      <div class="triple">
+        <div class="num ax-x"><b id="sx">0.000</b><small>X</small></div>
+        <div class="num ax-y"><b id="sy">0.000</b><small>Y</small></div>
+        <div class="num ax-z"><b id="sz">0.000</b><small>Z</small></div>
+      </div>
+    </div>
+    <div class="statcard">
+      <div class="h">Orientación Euler XYZ · <span id="eunit">rad</span>
+        <button class="unit-toggle" id="unitBtn">Cambiar rad/grados (°)</button></div>
+      <div class="triple">
+        <div class="num"><b id="ex">0.000</b><small>φx</small></div>
+        <div class="num"><b id="ey">0.000</b><small>φy</small></div>
+        <div class="num"><b id="ez">0.000</b><small>φz</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="body">
+    <div id="viewport">
+      <div class="vp-btns">
+        <button id="centerBtn">Centrar vista</button>
+      </div>
+      <div id="legend">
+        <span><i class="dot" style="background:var(--x)"></i>X</span>
+        <span><i class="dot" style="background:var(--y)"></i>Y</span>
+        <span><i class="dot" style="background:var(--z)"></i>Z</span>
+        <span><i class="dot" style="background:var(--rev)"></i>Rotación</span>
+        <span><i class="dot" style="background:var(--pris)"></i>Prismática</span>
+      </div>
+      <div id="hint">Ratón: arrastra orbita · rueda zoom · clic dcho/⇧ desplaza &nbsp;|&nbsp; Táctil: 1 dedo orbita · 2 dedos zoom/desplazan</div>
+    </div>
+
+    <div id="panel">
+      <section>
+        <h2>Modelo</h2>
+        <select id="preset">
+          <option value="irb4600">ABB IRB 4600 (6R)</option>
+          <option value="rpr">RPR (concepto)</option>
+          <option value="iiwa">KUKA LBR iiwa (7R)</option>
+          <option value="lw4p">Schunk LWA 4P (6R)</option>
+          <option value="rrp">RRP (concepto)</option>
+          <option value="ppp">PPP (concepto)</option>
+        </select>
+        <textarea id="dhInput" spellcheck="false"></textarea>
+        <div class="cols">columnas:&nbsp; a&nbsp;&nbsp; α(°)&nbsp;&nbsp; d&nbsp;&nbsp; θ(°)&nbsp;&nbsp; tipo &nbsp;·&nbsp; 1=rotación · 2=prismática</div>
+        <div class="row">
+          <button class="primary wide" id="applyBtn">Aplicar tabla</button>
+          <button class="wide" id="fileBtn">Cargar fichero…</button>
+          <input type="file" id="fileInput" accept=".txt,.csv,.dat" hidden />
+        </div>
+        <div id="status"></div>
+      </section>
+
+      <section>
+        <h2>Articulaciones</h2>
+        <div id="sliders"></div>
+      </section>
+
+      <section>
+        <h2>Vista y utilidades</h2>
+        <div class="opts">
+          <label><input type="checkbox" id="trailChk" checked /> Estela del extremo</label>
+          <label><input type="checkbox" id="gridChk" checked /> Rejilla de suelo</label>
+          <button id="copyBtn" style="align-self:flex-start;">Copiar posición</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================================
+   										F U N C I O N E S
+   ===================================================================================== */
+function matMul(A,B){
+  const rA=A.length,cA=A[0].length,cB=B[0].length;
+  const R=Array.from({length:rA},()=>new Array(cB).fill(0));
+  for(let i=0;i<rA;i++)for(let j=0;j<cB;j++)for(let k=0;k<cA;k++)R[i][j]+=A[i][k]*B[k][j];
+  return R;
+}
+function DH(p){
+  const a=p[0],alpha=p[1],d=p[2],theta=p[3];
+  const c=Math.cos(theta),s=Math.sin(theta),ca=Math.cos(alpha),sa=Math.sin(alpha);
+  return [[c,-s*ca,s*sa,a*c],[s,c*ca,-c*sa,a*s],[0,sa,ca,d],[0,0,0,1]];
+}
+function DHFKine(table,k){
+  const n=(k==null)?table.length:k;
+  let H=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+  for(let i=0;i<n;i++)H=matMul(H,DH(table[i]));
+  return H;
+}
+const rigidPosition=g=>[g[0][3],g[1][3],g[2][3]];
+function eulerFromRotation(R){
+  return [Math.atan2(-R[1][2],R[2][2]),
+          Math.atan2(R[0][2],Math.sqrt(1-R[0][2]*R[0][2])),
+          Math.atan2(-R[0][1],R[0][0])];
+}
+
+/* =====================================================================================
+   						M O D E L O S   P R E D E F I N I D O S
+   ===================================================================================== */
+const PRESETS={
+  irb4600:`0.175 -90 0.495 0 1\n1.095 0 0 -90 1\n0.175 -90 0 0 1\n0 90 1.2305 0 1\n0 90 0 180 1\n0 0 0.085 0 1`,
+  rpr:`0 90 0.5 90 1\n0 0 0.4 0 2\n0 0 0.2 0 1`,
+  iiwa:`0 -90 0.340 0 1\n0 90 0 0 1\n0 90 0.400 0 1\n0 -90 0 0 1\n0 -90 0.400 0 1\n0 90 0 0 1\n0 0 0.126 0 1`,
+  lw4p:`0 90 0 0 1\n0.35 180 0 90 1\n0 90 0 90 1\n0 -90 0.305 0 1\n0 90 0 0 1\n0 0 0 0 1`,
+  rrp:`0 -90 0.5 0 1\n0.4 -90 0 -90 1\n0 0 0.2 0 2`,
+  ppp:`0 -90 0.5 -90 2\n0 -90 0.4 -90 2\n0.3 0 0.2 -90 2`
+};
+const DEFAULT_TABLE=PRESETS.irb4600;
+
+/* =====================================================================================
+   										M A I N
+   ===================================================================================== */
+let DHtable=[], n=0, dMax=1, L_cyl=1, D_cyl=1, Sc1=1;
+let trailPts=[], eulerDeg=false;
+
+/* =====================================================================================
+   					C O N F I G U R A C I Ó N   T H R E E . J S
+   ===================================================================================== */
+const viewport=document.getElementById('viewport');
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,1,0.01,5000); camera.up.set(0,0,1);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+viewport.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdfe9ff,0x161a20,0.95));
+const dl=new THREE.DirectionalLight(0xffffff,0.6); dl.position.set(3,-4,6); scene.add(dl);
+
+const GRID={dark:[0x2a3242,0x191f2a],light:[0xc7cfdb,0xdfe4ec]};
+function makeGrid(){
+  const c=document.documentElement.getAttribute('data-theme')==='light'?GRID.light:GRID.dark;
+  const g=new THREE.GridHelper(20,20,c[0],c[1]); g.rotation.x=Math.PI/2; return g;
+}
+let grid=makeGrid(); scene.add(grid);
+const robotGroup=new THREE.Group(); scene.add(robotGroup);
+
+function makeTriad(){
+  const g=new THREE.Group();
+  const x=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),1,0xff6b6b,.001,.001);
+  const y=new THREE.ArrowHelper(new THREE.Vector3(0,1,0),new THREE.Vector3(),1,0x67d982,.001,.001);
+  const z=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(),1,0x5aa2ff,.001,.001);
+  g.add(x,y,z); return {group:g,x,y,z};
+}
+const originAxes=makeTriad(); scene.add(originAxes.group);
+const eeAxes=makeTriad(); scene.add(eeAxes.group);
+let trailLine=null;
+
+function setTriad(t,origin,cols,len){
+  const hl=len*0.22,hw=len*0.11,axes=[t.x,t.y,t.z];
+  for(let k=0;k<3;k++){
+    const d=new THREE.Vector3(cols[0][k],cols[1][k],cols[2][k]).normalize();
+    axes[k].position.set(origin[0],origin[1],origin[2]);
+    axes[k].setDirection(d); axes[k].setLength(len,hl,hw);
+  }
+}
+
+/* ---- Órbita propia (sin dependencias) ---- */
+const target=new THREE.Vector3(0,0,0);
+let radius=6,azim=-0.9,polar=1.05;
+function updateCamera(){
+  const sp=Math.sin(polar);
+  camera.position.set(target.x+radius*sp*Math.cos(azim),
+                      target.y+radius*sp*Math.sin(azim),
+                      target.z+radius*Math.cos(polar));
+  camera.lookAt(target);
+}
+(function(){
+  const el=renderer.domElement;
+  function orbit(dx,dy){azim-=dx*0.008;polar-=dy*0.008;
+    polar=Math.max(0.05,Math.min(Math.PI-0.05,polar));updateCamera();}
+  function pan(dx,dy){
+    const fwd=new THREE.Vector3().subVectors(target,camera.position).normalize();
+    const rt=new THREE.Vector3().crossVectors(fwd,camera.up).normalize();
+    const up=new THREE.Vector3().crossVectors(rt,fwd).normalize();
+    const k=radius*0.0015; target.addScaledVector(rt,-dx*k); target.addScaledVector(up,dy*k); updateCamera();}
+  function zoom(f){radius=Math.max(0.4,Math.min(500,radius*f));updateCamera();}
+
+  /* --- Ratón --- */
+  let mode=0,px=0,py=0;
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('mousedown',e=>{mode=(e.button===2||e.button===1||e.shiftKey)?2:1;px=e.clientX;py=e.clientY;});
+  window.addEventListener('mouseup',()=>mode=0);
+  window.addEventListener('mousemove',e=>{
+    if(!mode)return; const dx=e.clientX-px,dy=e.clientY-py; px=e.clientX; py=e.clientY;
+    if(mode===1)orbit(dx,dy); else pan(dx,dy);
+  });
+  el.addEventListener('wheel',e=>{e.preventDefault();zoom(1+Math.sign(e.deltaY)*0.08);},{passive:false});
+
+  /* --- Táctil / móvil --- */
+  let tx=0,ty=0,pinch=0;
+  el.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){tx=e.touches[0].clientX;ty=e.touches[0].clientY;}
+    else if(e.touches.length===2){
+      const a=e.touches[0],b=e.touches[1];
+      pinch=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+      tx=(a.clientX+b.clientX)/2; ty=(a.clientY+b.clientY)/2;
+    }
+  },{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(e.touches.length===1){                                   // un dedo → orbitar
+      const dx=e.touches[0].clientX-tx,dy=e.touches[0].clientY-ty;
+      tx=e.touches[0].clientX; ty=e.touches[0].clientY; orbit(dx,dy);
+    }else if(e.touches.length===2){                             // dos dedos → zoom + desplazar
+      const a=e.touches[0],b=e.touches[1];
+      const dist=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+      const mx=(a.clientX+b.clientX)/2,my=(a.clientY+b.clientY)/2;
+      if(pinch>0)zoom(pinch/dist);
+      pan(mx-tx,my-ty);
+      pinch=dist; tx=mx; ty=my;
+    }
+  },{passive:false});
+  el.addEventListener('touchend',e=>{
+    if(e.touches.length===1){tx=e.touches[0].clientX;ty=e.touches[0].clientY;}
+    pinch=0;
+  });
+})();
+function centerView(){ target.set(0,0,dMax*0.35); radius=dMax*4.2; azim=-0.9; polar=1.05; updateCamera(); }
+
+function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;
+  renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+
+/* Materiales base */
+const matLink=new THREE.MeshStandardMaterial({color:0x9aa3ad,roughness:.6,metalness:.15});
+const EMISS=new THREE.Color(0x8b7bff);
+
+/* =====================================================================================
+   		C O N S T R U C C I Ó N  Y  A C T U A L I Z A C I Ó N  D E  M O D E L O S
+   ===================================================================================== */
+let jointMeshes=[], linkMeshes=[];
+const Y=new THREE.Vector3(0,1,0);
+
+function computeScale(){
+  const a=DHtable.map(r=>r[0]),d=DHtable.map(r=>r[2]);
+  dMax=Math.max(Math.max(...a),Math.max(...d)); if(!isFinite(dMax)||dMax<=0)dMax=1;
+  L_cyl=0.12*dMax; D_cyl=0.08*dMax; Sc1=0.4*dMax;
+}
+function buildRobot(){
+  jointMeshes.forEach(m=>robotGroup.remove(m)); linkMeshes.forEach(m=>robotGroup.remove(m));
+  jointMeshes=[]; linkMeshes=[]; trailPts=[]; computeScale(); n=DHtable.length;
+  let nRev=0,nPris=0;
+  for(let i=0;i<n;i++){
+    const link=new THREE.Mesh(new THREE.CylinderGeometry(D_cyl/2,D_cyl/2,1,16),matLink);
+    robotGroup.add(link); linkMeshes.push(link);
+    let joint;
+    if(DHtable[i][4]===2){
+      joint=new THREE.Mesh(new THREE.BoxGeometry(L_cyl,L_cyl,L_cyl),
+        new THREE.MeshStandardMaterial({color:0xe879f9,roughness:.5,metalness:.2})); nPris++;
+    }else{
+      joint=new THREE.Mesh(new THREE.CylinderGeometry(D_cyl,D_cyl,L_cyl,24),
+        new THREE.MeshStandardMaterial({color:0xffd23f,roughness:.45,metalness:.2})); nRev++;
+    }
+    robotGroup.add(joint); jointMeshes.push(joint);
+  }
+  setTriad(originAxes,[0,0,0],[[1,0,0],[0,1,0],[0,0,1]],Sc1);
+  centerView(); buildSliders(); updateRobot();
+}
+
+function updateRobot(){
+  let FKcur=null,Ocur=[0,0,0];
+  for(let i=0;i<n;i++){
+    const FKpre=DHFKine(DHtable,i); FKcur=DHFKine(DHtable,i+1);
+    const Opre=rigidPosition(FKpre),Oc=rigidPosition(FKcur); Ocur=Oc;
+    const zAx=new THREE.Vector3(FKpre[0][2],FKpre[1][2],FKpre[2][2]).normalize();
+    const jm=jointMeshes[i]; jm.position.set(Opre[0],Opre[1],Opre[2]);
+    if(DHtable[i][4]===2){
+      const m=new THREE.Matrix4().set(
+        FKpre[0][0],FKpre[0][1],FKpre[0][2],0, FKpre[1][0],FKpre[1][1],FKpre[1][2],0,
+        FKpre[2][0],FKpre[2][1],FKpre[2][2],0, 0,0,0,1);
+      jm.setRotationFromMatrix(m);
+    }else jm.quaternion.setFromUnitVectors(Y,zAx);
+    const A=new THREE.Vector3(...Opre),B=new THREE.Vector3(...Oc);
+    const dv=new THREE.Vector3().subVectors(B,A),len=dv.length(),lm=linkMeshes[i];
+    if(len>1e-9){lm.visible=true;lm.position.copy(A).addScaledVector(dv,0.5);
+      lm.quaternion.setFromUnitVectors(Y,dv.clone().normalize());lm.scale.set(1,len,1);}
+    else lm.visible=false;
+  }
+  if(FKcur){
+    const cols=[[FKcur[0][0],FKcur[0][1],FKcur[0][2]],
+                [FKcur[1][0],FKcur[1][1],FKcur[1][2]],
+                [FKcur[2][0],FKcur[2][1],FKcur[2][2]]];
+    setTriad(eeAxes,Ocur,cols,Sc1);
+    setReadout(Ocur,eulerFromRotation(cols));
+    trailPts.push(new THREE.Vector3(...Ocur)); if(trailPts.length>50)trailPts.shift();
+    updateTrail();
+  }
+}
+function updateTrail(){
+  if(trailLine){scene.remove(trailLine);trailLine.geometry.dispose();trailLine=null;}
+  if(!document.getElementById('trailChk').checked||trailPts.length<2)return;
+  const geo=new THREE.BufferGeometry().setFromPoints(trailPts);
+  trailLine=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x8b7bff,transparent:true,opacity:.55}));
+  scene.add(trailLine);
+}
+
+let lastPos=[0,0,0], lastEul=[0,0,0];
+function setReadout(pos,eul){
+  lastPos=pos; lastEul=eul;
+  document.getElementById('sx').textContent=pos[0].toFixed(3);
+  document.getElementById('sy').textContent=pos[1].toFixed(3);
+  document.getElementById('sz').textContent=pos[2].toFixed(3);
+  const k=eulerDeg?180/Math.PI:1, dp=eulerDeg?2:3;
+  document.getElementById('ex').textContent=(eul[0]*k).toFixed(dp);
+  document.getElementById('ey').textContent=(eul[1]*k).toFixed(dp);
+  document.getElementById('ez').textContent=(eul[2]*k).toFixed(dp);
+}
+function highlight(i){
+  jointMeshes.forEach((m,j)=>{
+    if(!m.material.emissive)return;
+    if(j===i){m.material.emissive.copy(EMISS);m.material.emissiveIntensity=0.6;}
+    else{m.material.emissive.setHex(0x000000);m.material.emissiveIntensity=0;}
+  });
+}
+
+/* =====================================================================================
+						S L I D E R S | A R T I C U L A C I O N E S
+   ===================================================================================== */
+function buildSliders(){
+  const box=document.getElementById('sliders'); box.innerHTML='';
+  for(let i=0;i<n;i++){
+    const jt=DHtable[i][4]; let vn,min,max,step,unit,tipo,col;
+    if(jt===2){vn=DHtable[i][2];min=vn-2;max=vn+2;step=0.01;unit='';tipo='prismática';col='var(--pris)';}
+    //if(jt===2){vn=DHtable[i][2];min=Math.max(0,vn-2);max=vn+2;step=0.01;unit='';tipo='prismática';col='var(--pris)';} // Limitar a valores positivos
+    else{vn=DHtable[i][3]*180/Math.PI;min=vn-180;max=vn+180;step=0.5;unit='°';tipo='rotación';col='var(--rev)';}
+    const d=document.createElement('div'); d.className='joint';
+    d.innerHTML=`<div class="top">
+        <div class="name"><span class="chip" style="background:${col}"></span>J${i+1}<em>${tipo}</em></div>
+        <div class="cur" id="cur${i}">${vn.toFixed(3)}${unit}</div></div>
+      <input type="range" id="sl${i}" min="${min}" max="${max}" step="${step}" value="${vn}" />
+      <div class="range"><span>${min.toFixed(2)}</span><span>${max.toFixed(2)}</span></div>`;
+    box.appendChild(d);
+    const sl=d.querySelector('#sl'+i),cur=d.querySelector('#cur'+i);
+    const act=()=>{const v=parseFloat(sl.value);
+      if(jt===2){DHtable[i][2]=v;cur.textContent=v.toFixed(3);}
+      else{DHtable[i][3]=v*Math.PI/180;cur.textContent=v.toFixed(3)+'°';}
+      highlight(i); updateRobot();};
+    sl.addEventListener('input',act);
+    sl.addEventListener('mousedown',()=>highlight(i));
+  }
+}
+
+/* =====================================================================================
+   						C A R G A  D E  T A B L A S  D - H
+   ===================================================================================== */
+function parseTable(text){
+  const rows=[];
+  for(const raw of text.split('\n')){
+    const line=raw.trim(); if(!line)continue;
+    const c=line.split(/[\s,;]+/).map(Number);
+    if(c.length<5||c.some(isNaN))throw new Error(`Fila inválida: "${line}"`);
+    rows.push([c[0],c[1]*Math.PI/180,c[2],c[3]*Math.PI/180,c[4]]);
+  }
+  if(!rows.length)throw new Error('La tabla está vacía.');
+  return rows;
+}
+function applyTable(text){
+  const st=document.getElementById('status');
+  try{DHtable=parseTable(text);buildRobot();st.textContent=`✓ ${n} articulaciones cargadas.`;st.className='ok';}
+  catch(err){st.textContent='✗ '+err.message;st.className='err';}
+}
+
+/* =====================================================================================
+   								E V E N T O S  U I
+   ===================================================================================== */
+const inp=document.getElementById('dhInput');
+document.getElementById('applyBtn').onclick=()=>applyTable(inp.value);
+//document.getElementById('preset').onchange=e=>{inp.value=PRESETS[e.target.value];applyTable(inp.value);};
+document.getElementById('preset').onchange=e=>{
+  const v=e.target.value; if(!PRESETS[v])return;   // ignora la opción de fichero cargado
+  inp.value=PRESETS[v];applyTable(inp.value);};
+document.getElementById('fileBtn').onclick=()=>document.getElementById('fileInput').click();
+function setFileModel(name){
+  const sel=document.getElementById('preset');
+  let opt=sel.querySelector('option[value="__file__"]');
+  if(!opt){opt=document.createElement('option');opt.value='__file__';sel.appendChild(opt);}
+  opt.textContent='Fichero cargado: '+name;
+  sel.value='__file__';
+}
+document.getElementById('fileInput').onchange=e=>{
+  const f=e.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=ev=>{inp.value=ev.target.result;applyTable(ev.target.result);setFileModel(f.name);};
+  r.readAsText(f); e.target.value='';};   // reset: permite recargar el mismo fichero
+document.getElementById('trailChk').onchange=()=>{trailPts=[];updateTrail();};
+document.getElementById('gridChk').onchange=e=>{grid.visible=e.target.checked;};
+document.getElementById('centerBtn').onclick=centerView;
+document.getElementById('unitBtn').onclick=()=>{
+  eulerDeg=!eulerDeg;
+  document.getElementById('eunit').textContent=eulerDeg?'grados (°)':'rad';
+  setReadout(lastPos,lastEul);
+};
+document.getElementById('copyBtn').onclick=()=>{
+  const u=eulerDeg?'°':'rad',k=eulerDeg?180/Math.PI:1;
+  const txt=`Pos XYZ = ${lastPos.map(v=>v.toFixed(4)).join(', ')} | `+
+            `Euler XYZ (${u}) = ${lastEul.map(v=>(v*k).toFixed(4)).join(', ')}`;
+  const st=document.getElementById('status');
+  navigator.clipboard.writeText(txt).then(
+    ()=>{st.textContent='✓ Posición copiada al portapapeles.';st.className='ok';},
+    ()=>{st.textContent='Posición: '+txt;st.className='';});
+};
+
+/* =====================================================================================
+   										T E M A  C L A R O / O S C U R O
+   ===================================================================================== */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  try{localStorage.setItem('dh-theme',t);}catch(e){}
+  const vis=grid.visible;
+  scene.remove(grid); grid.geometry.dispose(); grid.material.dispose();
+  grid=makeGrid(); grid.visible=vis; scene.add(grid);
+}
+(function(){let t='dark';try{t=localStorage.getItem('dh-theme')||'dark';}catch(e){}
+  applyTheme(t);})();
+document.getElementById('themeBtn').onclick=()=>{
+  const cur=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  applyTheme(cur==='light'?'dark':'light');
+};
+
+/* =====================================================================================
+   										I N I T
+   ===================================================================================== */
+inp.value=DEFAULT_TABLE; resize(); applyTable(DEFAULT_TABLE);
+(function animate(){requestAnimationFrame(animate);renderer.render(scene,camera);})();
+</script>
+</body>
+</html>

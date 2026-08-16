@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "Si utiliza este software, por favor cítelo tal como se indica."
+title: "FRANKIE: Forward-kinematics Robot Arm Navigation Kit for Interactive Education"
+abstract: "Simulador web del algoritmo de Denavit-Hartenberg para la enseñanza de la cinemática directa de robots manipuladores, desarrollado con JavaScript y Three.js."
+type: software
+authors:
+  - family-names: "Garrido Sánchez"
+    given-names: "Elena"
+    affiliation: "Universidad de Almería"
+version: "3.0"
+date-released: "2026-08-16"
+license: MIT
+repository-code: "https://github.com/cloudshadowforce/frankie"
+url: "https://cloudshadowforce.github.io/frankie/"
+keywords:
+  - "Denavit-Hartenberg"
+  - "forward kinematics"
+  - "robotics education"
+  - "Three.js"
+  - "WebGL"
