@@ -538,8 +538,8 @@ function buildSliders(){
   const box=document.getElementById('sliders'); box.innerHTML='';
   for(let i=0;i<n;i++){
     const jt=DHtable[i][4]; let vn,min,max,step,unit,tipo,col;
-    if(jt===2){vn=DHtable[i][2];min=vn-2;max=vn+2;step=0.01;unit='';tipo='prismática';col='var(--pris)';}
-    //if(jt===2){vn=DHtable[i][2];min=Math.max(0,vn-2);max=vn+2;step=0.01;unit='';tipo='prismática';col='var(--pris)';} // Limitar a valores positivos
+    //if(jt===2){vn=DHtable[i][2];min=vn-2;max=vn+2;step=0.01;unit='';tipo='prismática';col='var(--pris)';}
+    if(jt===2){vn=DHtable[i][2];min=Math.max(0,vn-2);max=vn+2;step=0.01;unit='';tipo='prismática';col='var(--pris)';} // Limitar a valores positivos
     else{vn=DHtable[i][3]*180/Math.PI;min=vn-180;max=vn+180;step=0.5;unit='°';tipo='rotación';col='var(--rev)';}
     const d=document.createElement('div'); d.className='joint';
     d.innerHTML=`<div class="top">
