@@ -99,17 +99,25 @@
   .statcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;
     padding:11px 16px;min-width:max-content;}
   .statcard .h{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
-    margin-bottom:7px;}
+    margin-bottom:7px;display:flex;align-items:center;gap:8px;}
   .triple{display:flex;gap:16px;}
   .num{display:flex;flex-direction:column;gap:2px;}
   .num b{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;}
   .num small{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  /* Los ángulos conservan la notación de la nomenclatura: φx, φy, φz */
+  .num small.sym{text-transform:none;font-size:10px;letter-spacing:.04em;}
   .num.ax-x b{color:#ff8f8f;} .num.ax-y b{color:#8ce6a3;} .num.ax-z b{color:#8bc0ff;}
   .metarow{display:flex;gap:18px;align-items:center;}
   .metarow .num b{font-size:21px;}
-  .unit-toggle{margin-left:8px;font-size:10.5px;color:var(--muted);cursor:pointer;
+  .unit-toggle{font-size:10.5px;color:var(--muted);cursor:pointer;
     border:1px solid var(--border);background:var(--surface-2);border-radius:7px;padding:4px 9px;}
   .unit-toggle:hover{border-color:var(--accent);color:var(--text);}
+  /* Selector de convención de orientación */
+  select.conv-sel{width:auto;margin:0;padding:3px 7px;font-size:10.5px;font-weight:650;
+    letter-spacing:.06em;text-transform:none;border-radius:7px;color:var(--text);
+    background:var(--surface-2);cursor:pointer;}
+  select.conv-sel:hover{border-color:var(--accent);}
+  .conv-desc{text-transform:none;letter-spacing:0;font-size:10px;color:var(--muted);}
 
   /* ---- Cuerpo: viewport + panel ---- */
   #body{flex:1;display:grid;grid-template-columns:1fr 372px;min-height:0;}
@@ -145,8 +153,8 @@
   button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:650;}
   button.primary:hover{filter:brightness(1.08);}
   button.wide{flex:1;}
-  #status{font-size:11px;margin-top:10px;min-height:15px;color:var(--muted);font-family:var(--mono);}
-  #status.err{color:#ff8a8a;} #status.ok{color:#8ce6a3;}
+  #status{font-size:12px;margin-top:10px;min-height:15px;color:var(--muted);font-family:var(--mono);}
+  #status.err{color:#ff8a8a;} #status.ok{color:#1f9c57;}
 
   .joint{margin-bottom:16px;} .joint:last-child{margin-bottom:2px;}
   .joint .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
@@ -187,6 +195,7 @@
     #hint{display:none;}
     #legend{gap:9px;padding:6px 10px;font-size:10px;}
     .vp-btns button{padding:7px 10px;}
+    .conv-desc{display:none;}
   }
   @media (max-width:380px){
     .brand h1{font-size:11.5px;} .brand .mark{width:23px;height:23px;font-size:12px;}
@@ -199,7 +208,6 @@
   <header>
     <div class="brand">
       <div class="mark">F</div>
-      <!-- <h1>Simulador Denavit–Hartenberg</h1> -->
       <h1>FRANKIE</h1>      
     </div>
     <div class="head-right">
@@ -213,20 +221,28 @@
 
   <div class="stats">
     <div class="statcard">
-      <div class="h">Posición del extremo</div>
+      <div class="h">Posición del extremo · m</div>
       <div class="triple">
-        <div class="num ax-x"><b id="sx">0.000</b><small>X</small></div>
-        <div class="num ax-y"><b id="sy">0.000</b><small>Y</small></div>
-        <div class="num ax-z"><b id="sz">0.000</b><small>Z</small></div>
+        <div class="num ax-x"><b id="sx">0.0000</b><small>X</small></div>
+        <div class="num ax-y"><b id="sy">0.0000</b><small>Y</small></div>
+        <div class="num ax-z"><b id="sz">0.0000</b><small>Z</small></div>
       </div>
     </div>
     <div class="statcard">
-      <div class="h">Orientación Euler XYZ · <span id="eunit">rad</span>
-        <button class="unit-toggle" id="unitBtn">Cambiar rad/grados (°)</button></div>
+      <div class="h">
+        <span>Orientación</span>
+        <select id="convSel" class="conv-sel" title="Secuencia de ángulos de Euler" aria-label="Convención de ángulos de Euler">
+          <option value="XYZ">Euler XYZ</option>
+          <option value="ZYX">Euler ZYX</option>
+        </select>
+        <span class="conv-desc" id="convDesc">X → Y → Z sobre ejes móviles</span>
+        <span id="eunit">grados (°)</span>
+        <button class="unit-toggle" id="unitBtn">Cambiar a rad</button>
+      </div>
       <div class="triple">
-        <div class="num"><b id="ex">0.000</b><small>φx</small></div>
-        <div class="num"><b id="ey">0.000</b><small>φy</small></div>
-        <div class="num"><b id="ez">0.000</b><small>φz</small></div>
+        <div class="num"><b id="ex">0.0000</b><small class="sym" id="lb0">φx</small></div>
+        <div class="num"><b id="ey">0.0000</b><small class="sym" id="lb1">φy</small></div>
+        <div class="num"><b id="ez">0.0000</b><small class="sym" id="lb2">φz</small></div>
       </div>
     </div>
   </div>
@@ -307,11 +323,20 @@ function DHFKine(table,k){
   return H;
 }
 const rigidPosition=g=>[g[0][3],g[1][3],g[2][3]];
-function eulerFromRotation(R){
+function eulerXYZ(R){
   return [Math.atan2(-R[1][2],R[2][2]),
-          Math.atan2(R[0][2],Math.sqrt(1-R[0][2]*R[0][2])),
+          Math.atan2( R[0][2],Math.sqrt(Math.max(0,1-R[0][2]*R[0][2]))),
           Math.atan2(-R[0][1],R[0][0])];
 }
+function eulerZYX(R){
+  return [Math.atan2( R[1][0],R[0][0]),
+          Math.atan2(-R[2][0],Math.sqrt(Math.max(0,1-R[2][0]*R[2][0]))),
+          Math.atan2( R[2][1],R[2][2])];
+}
+const CONVENCIONES={
+  XYZ:{fn:eulerXYZ, etiquetas:['φx','φy','φz'], texto:'X → Y → Z sobre ejes móviles'},
+  ZYX:{fn:eulerZYX, etiquetas:['φz','φy','φx'], texto:'Z → Y → X · roll-pitch-yaw'}
+};
 
 /* =====================================================================================
    						M O D E L O S   P R E D E F I N I D O S
@@ -330,7 +355,7 @@ const DEFAULT_TABLE=PRESETS.irb4600;
    										M A I N
    ===================================================================================== */
 let DHtable=[], n=0, dMax=1, L_cyl=1, D_cyl=1, Sc1=1;
-let trailPts=[], eulerDeg=false;
+let trailPts=[], eulerDeg=true, eulerConv='XYZ';
 
 /* =====================================================================================
    					C O N F I G U R A C I Ó N   T H R E E . J S
@@ -363,10 +388,10 @@ const originAxes=makeTriad(); scene.add(originAxes.group);
 const eeAxes=makeTriad(); scene.add(eeAxes.group);
 let trailLine=null;
 
-function setTriad(t,origin,cols,len){
+function setTriad(t,origin,R,len){
   const hl=len*0.22,hw=len*0.11,axes=[t.x,t.y,t.z];
   for(let k=0;k<3;k++){
-    const d=new THREE.Vector3(cols[0][k],cols[1][k],cols[2][k]).normalize();
+    const d=new THREE.Vector3(R[0][k],R[1][k],R[2][k]).normalize();
     axes[k].position.set(origin[0],origin[1],origin[2]);
     axes[k].setDirection(d); axes[k].setLength(len,hl,hw);
   }
@@ -457,17 +482,16 @@ function computeScale(){
 function buildRobot(){
   jointMeshes.forEach(m=>robotGroup.remove(m)); linkMeshes.forEach(m=>robotGroup.remove(m));
   jointMeshes=[]; linkMeshes=[]; trailPts=[]; computeScale(); n=DHtable.length;
-  let nRev=0,nPris=0;
   for(let i=0;i<n;i++){
     const link=new THREE.Mesh(new THREE.CylinderGeometry(D_cyl/2,D_cyl/2,1,16),matLink);
     robotGroup.add(link); linkMeshes.push(link);
     let joint;
     if(DHtable[i][4]===2){
       joint=new THREE.Mesh(new THREE.BoxGeometry(L_cyl,L_cyl,L_cyl),
-        new THREE.MeshStandardMaterial({color:0xe879f9,roughness:.5,metalness:.2})); nPris++;
+        new THREE.MeshStandardMaterial({color:0xe879f9,roughness:.5,metalness:.2}));
     }else{
       joint=new THREE.Mesh(new THREE.CylinderGeometry(D_cyl,D_cyl,L_cyl,24),
-        new THREE.MeshStandardMaterial({color:0xffd23f,roughness:.45,metalness:.2})); nRev++;
+        new THREE.MeshStandardMaterial({color:0xffd23f,roughness:.45,metalness:.2}));
     }
     robotGroup.add(joint); jointMeshes.push(joint);
   }
@@ -495,11 +519,11 @@ function updateRobot(){
     else lm.visible=false;
   }
   if(FKcur){
-    const cols=[[FKcur[0][0],FKcur[0][1],FKcur[0][2]],
+    const Rot=[[FKcur[0][0],FKcur[0][1],FKcur[0][2]],
                 [FKcur[1][0],FKcur[1][1],FKcur[1][2]],
                 [FKcur[2][0],FKcur[2][1],FKcur[2][2]]];
-    setTriad(eeAxes,Ocur,cols,Sc1);
-    setReadout(Ocur,eulerFromRotation(cols));
+    setTriad(eeAxes,Ocur,Rot,Sc1);
+    setReadout(Ocur,Rot);
     trailPts.push(new THREE.Vector3(...Ocur)); if(trailPts.length>50)trailPts.shift();
     updateTrail();
   }
@@ -512,16 +536,25 @@ function updateTrail(){
   scene.add(trailLine);
 }
 
-let lastPos=[0,0,0], lastEul=[0,0,0];
-function setReadout(pos,eul){
-  lastPos=pos; lastEul=eul;
-  document.getElementById('sx').textContent=pos[0].toFixed(3);
-  document.getElementById('sy').textContent=pos[1].toFixed(3);
-  document.getElementById('sz').textContent=pos[2].toFixed(3);
-  const k=eulerDeg?180/Math.PI:1, dp=eulerDeg?2:3;
-  document.getElementById('ex').textContent=(eul[0]*k).toFixed(dp);
-  document.getElementById('ey').textContent=(eul[1]*k).toFixed(dp);
-  document.getElementById('ez').textContent=(eul[2]*k).toFixed(dp);
+/* =====================================================================================
+   		L E C T U R A   D E   P O S I C I Ó N   Y   O R I E N T A C I Ó N
+   ===================================================================================== */
+let lastPos=[0,0,0], lastR=[[1,0,0],[0,1,0],[0,0,1]];
+function eulerActual(){ return CONVENCIONES[eulerConv].fn(lastR); }
+function setReadout(pos,R){
+  lastPos=pos; lastR=R;
+  document.getElementById('sx').textContent=pos[0].toFixed(4);
+  document.getElementById('sy').textContent=pos[1].toFixed(4);
+  document.getElementById('sz').textContent=pos[2].toFixed(4);
+  refreshOrientation();
+}
+function refreshOrientation(){
+  const c=CONVENCIONES[eulerConv], eul=c.fn(lastR), k=eulerDeg?180/Math.PI:1;
+  ['ex','ey','ez'].forEach((id,i)=>document.getElementById(id).textContent=(eul[i]*k).toFixed(4));
+  ['lb0','lb1','lb2'].forEach((id,i)=>document.getElementById(id).textContent=c.etiquetas[i]);
+  document.getElementById('convDesc').textContent=c.texto;
+  document.getElementById('eunit').textContent=eulerDeg?'grados (°)':'radianes';
+  document.getElementById('unitBtn').textContent=eulerDeg?'Cambiar a rad':'Cambiar a grados';
 }
 function highlight(i){
   jointMeshes.forEach((m,j)=>{
@@ -602,15 +635,13 @@ document.getElementById('fileInput').onchange=e=>{
 document.getElementById('trailChk').onchange=()=>{trailPts=[];updateTrail();};
 document.getElementById('gridChk').onchange=e=>{grid.visible=e.target.checked;};
 document.getElementById('centerBtn').onclick=centerView;
-document.getElementById('unitBtn').onclick=()=>{
-  eulerDeg=!eulerDeg;
-  document.getElementById('eunit').textContent=eulerDeg?'grados (°)':'rad';
-  setReadout(lastPos,lastEul);
-};
+document.getElementById('convSel').onchange=e=>{eulerConv=e.target.value;refreshOrientation();};
+document.getElementById('unitBtn').onclick=()=>{eulerDeg=!eulerDeg;refreshOrientation();};
 document.getElementById('copyBtn').onclick=()=>{
   const u=eulerDeg?'°':'rad',k=eulerDeg?180/Math.PI:1;
-  const txt=`Pos XYZ = ${lastPos.map(v=>v.toFixed(4)).join(', ')} | `+
-            `Euler XYZ (${u}) = ${lastEul.map(v=>(v*k).toFixed(4)).join(', ')}`;
+  const et=CONVENCIONES[eulerConv].etiquetas.join(', ');
+  const txt=`Pos XYZ (m) = ${lastPos.map(v=>v.toFixed(4)).join(', ')} | `+
+            `Euler ${eulerConv} [${et}] (${u}) = ${eulerActual().map(v=>(v*k).toFixed(4)).join(', ')}`;
   const st=document.getElementById('status');
   navigator.clipboard.writeText(txt).then(
     ()=>{st.textContent='✓ Posición copiada al portapapeles.';st.className='ok';},
