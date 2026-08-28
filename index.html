@@ -112,11 +112,14 @@
   .unit-toggle{font-size:10.5px;color:var(--muted);cursor:pointer;
     border:1px solid var(--border);background:var(--surface-2);border-radius:7px;padding:4px 9px;}
   .unit-toggle:hover{border-color:var(--accent);color:var(--text);}
-  /* Selector de convención de orientación */
-  select.conv-sel{width:auto;margin:0;padding:3px 7px;font-size:10.5px;font-weight:650;
-    letter-spacing:.06em;text-transform:none;border-radius:7px;color:var(--text);
-    background:var(--surface-2);cursor:pointer;}
-  select.conv-sel:hover{border-color:var(--accent);}
+  /* Selector de convención de orientación: grupo de dos botones excluyentes */
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;
+    background:var(--surface-2);}
+  .seg-btn{border:0;border-radius:0;padding:4px 11px;font-size:10.5px;font-weight:700;
+    letter-spacing:.1em;background:transparent;color:var(--muted);}
+  .seg-btn+.seg-btn{border-left:1px solid var(--border);}
+  .seg-btn:hover{color:var(--text);}
+  .seg-btn.is-on{background:var(--accent);color:var(--accent-ink);}
   .conv-desc{text-transform:none;letter-spacing:0;font-size:10px;color:var(--muted);}
 
   /* ---- Cuerpo: viewport + panel ---- */
@@ -230,11 +233,13 @@
     </div>
     <div class="statcard">
       <div class="h">
-        <span>Orientación</span>
-        <select id="convSel" class="conv-sel" title="Secuencia de ángulos de Euler" aria-label="Convención de ángulos de Euler">
-          <option value="XYZ">Euler XYZ</option>
-          <option value="ZYX">Euler ZYX</option>
-        </select>
+        <span>Orientación · Euler</span>
+        <span class="seg" role="group" aria-label="Convención de ángulos de Euler">
+          <button type="button" class="seg-btn is-on" data-conv="XYZ" aria-pressed="true"
+                  title="Secuencia X → Y → Z sobre ejes móviles">XYZ</button>
+          <button type="button" class="seg-btn" data-conv="ZYX" aria-pressed="false"
+                  title="Secuencia Z → Y → X, roll-pitch-yaw">ZYX</button>
+        </span>
         <span class="conv-desc" id="convDesc">X → Y → Z sobre ejes móviles</span>
         <span id="eunit">grados (°)</span>
         <button class="unit-toggle" id="unitBtn">Cambiar a rad</button>
@@ -553,6 +558,10 @@ function refreshOrientation(){
   ['ex','ey','ez'].forEach((id,i)=>document.getElementById(id).textContent=(eul[i]*k).toFixed(4));
   ['lb0','lb1','lb2'].forEach((id,i)=>document.getElementById(id).textContent=c.etiquetas[i]);
   document.getElementById('convDesc').textContent=c.texto;
+  document.querySelectorAll('.seg-btn').forEach(b=>{
+    const on=b.dataset.conv===eulerConv;
+    b.classList.toggle('is-on',on); b.setAttribute('aria-pressed',on?'true':'false');
+  });
   document.getElementById('eunit').textContent=eulerDeg?'grados (°)':'radianes';
   document.getElementById('unitBtn').textContent=eulerDeg?'Cambiar a rad':'Cambiar a grados';
 }
@@ -635,7 +644,8 @@ document.getElementById('fileInput').onchange=e=>{
 document.getElementById('trailChk').onchange=()=>{trailPts=[];updateTrail();};
 document.getElementById('gridChk').onchange=e=>{grid.visible=e.target.checked;};
 document.getElementById('centerBtn').onclick=centerView;
-document.getElementById('convSel').onchange=e=>{eulerConv=e.target.value;refreshOrientation();};
+document.querySelectorAll('.seg-btn').forEach(b=>{
+  b.onclick=()=>{eulerConv=b.dataset.conv;refreshOrientation();};});
 document.getElementById('unitBtn').onclick=()=>{eulerDeg=!eulerDeg;refreshOrientation();};
 document.getElementById('copyBtn').onclick=()=>{
   const u=eulerDeg?'°':'rad',k=eulerDeg?180/Math.PI:1;
